@@ -116,3 +116,49 @@ disp(Xair);
 
 disp('Mass fractions Yair:');
 disp(Yair);
+
+%% NASA properties of air
+
+% Temperature range used for the cycle calculations
+TR = (200:1:3000)';      % Temperature [K]
+
+% Number of selected species
+nSp = length(SpS);
+
+% Preallocate matrices
+hia = zeros(length(TR), nSp);
+sia = zeros(length(TR), nSp);
+
+% Calculate enthalpy and temperature-dependent entropy
+% for every species over the full temperature range
+for i = 1:nSp
+
+    hTemp = HNasa(TR, SpS(i));
+    sTemp = SNasa(TR, SpS(i));
+
+    hia(:,i) = hTemp(:);
+    sia(:,i) = sTemp(:);
+
+end
+
+% Air mixture properties
+% Mass-fraction weighted average of the species properties
+hair_a = hia * Yair';
+sair_a = sia * Yair';
+
+%% Check NASA air properties
+
+% Evaluate the air properties at 300 K
+hAir300 = interp1(TR, hair_a, 300);
+sAirT300 = interp1(TR, sair_a, 300);
+
+fprintf('\n--- NASA AIR PROPERTIES ---\n');
+fprintf('Air enthalpy at 300 K            : %.2f J/kg\n', hAir300);
+fprintf('Air entropy temperature part     : %.2f J/(kg K)\n', sAirT300);
+
+% Basic checks
+assert(all(isfinite(hair_a)), ...
+    'Invalid values found in air enthalpy array.');
+
+assert(all(isfinite(sair_a)), ...
+    'Invalid values found in air entropy array.');
