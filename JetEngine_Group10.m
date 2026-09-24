@@ -230,3 +230,45 @@ diffuserEnergyResidual = ...
 
 fprintf('Diffuser energy residual = %.6f J/kg\n', ...
     diffuserEnergyResidual);
+
+%% Compressor 2 -> 3 : ideal isentropic reference state
+
+% Compressor outlet pressure
+P3 = P3overP2 * P2;
+
+% For the ideal compressor reference state 3s:
+% s3s = s2
+%
+% Therefore:
+% sT3s - sT2 - Rair*ln(P3/P2) = 0
+
+sT3s = sT2 + Rair * log(P3/P2);
+
+% Use NASA entropy curve to determine T3s
+T3s = interp1(sair_a, TR, sT3s);
+
+% Determine ideal outlet enthalpy
+h3s = interp1(TR, hair_a, T3s);
+
+fprintf('\n--- COMPRESSOR IDEAL STATE 3s ---\n');
+fprintf('P3  = %.0f Pa\n', P3);
+fprintf('T3s = %.2f K\n', T3s);
+fprintf('h3s = %.2f J/kg\n', h3s);
+
+%% Compressor ideal-state checks
+
+assert(P3 > P2, ...
+    'Compressor check failed: P3 should be greater than P2.');
+
+assert(T3s > T2, ...
+    'Compressor check failed: T3s should be greater than T2.');
+
+assert(h3s > h2, ...
+    'Compressor check failed: h3s should be greater than h2.');
+
+% Check the isentropic condition numerically
+compressorEntropyResidual = ...
+    (sT3s - sT2) - Rair*log(P3/P2);
+
+fprintf('Isentropic entropy residual = %.6f J/(kg K)\n', ...
+    compressorEntropyResidual);
