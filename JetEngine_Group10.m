@@ -79,3 +79,40 @@ fprintf('Fuel mass flow       : %.4f kg/s\n', mfurate);
 fprintf('Air-fuel ratio       : %.2f\n', AF);
 fprintf('Air mass flow        : %.4f kg/s\n', mair);
 fprintf('Flight velocity      : %.2f m/s\n', v1);
+
+%% Species and air mixture
+
+% Species used in the jet engine model
+speciesNames = {cFuel, 'O2', 'CO2', 'H2O', 'N2'};
+
+% Find the corresponding species in the NASA database
+iSp = myfind({Sp.Name}, speciesNames);
+
+% Store only the selected species
+SpS = Sp(iSp);
+
+% Molecular masses [kg/mol]
+Mi = [SpS.Mass];
+
+% Air composition in mole fractions
+% Order: [H2, O2, CO2, H2O, N2]
+Xair = [0, 0.21, 0, 0, 0.79];
+
+% Mean molar mass of air
+MAir = Xair * Mi';
+
+% Convert mole fractions to mass fractions
+Yair = Xair .* Mi / MAir;
+
+%% Check air composition
+
+fprintf('\n--- AIR COMPOSITION ---\n');
+
+fprintf('Sum of mole fractions Xair = %.6f\n', sum(Xair));
+fprintf('Sum of mass fractions Yair = %.6f\n', sum(Yair));
+
+disp('Mole fractions Xair:');
+disp(Xair);
+
+disp('Mass fractions Yair:');
+disp(Yair);
