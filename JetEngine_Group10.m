@@ -162,3 +162,71 @@ assert(all(isfinite(hair_a)), ...
 
 assert(all(isfinite(sair_a)), ...
     'Invalid values found in air entropy array.');
+
+%% State 1 - Engine inlet
+
+T1 = Tamb;         % [K]
+P1 = Pamb;         % [Pa]
+
+% Air properties at state 1
+h1  = interp1(TR, hair_a, T1);
+sT1 = interp1(TR, sair_a, T1);
+
+% Gas constant of the air mixture
+Rair = Runiv / MAir;    % [J/(kg K)]
+
+fprintf('\n--- STATE 1 ---\n');
+fprintf('T1   = %.2f K\n', T1);
+fprintf('P1   = %.0f Pa\n', P1);
+fprintf('v1   = %.2f m/s\n', v1);
+fprintf('h1   = %.2f J/kg\n', h1);
+fprintf('Rair = %.2f J/(kg K)\n', Rair);
+
+%% Diffuser 1 -> 2
+
+% Assumptions:
+% - steady flow
+% - adiabatic
+% - no shaft work
+% - negligible change in potential energy
+% - outlet velocity approximately zero
+% - isentropic process
+
+v2 = 0;       % [m/s]
+
+% Energy conservation:
+% h1 + v1^2/2 = h2 + v2^2/2
+
+h2 = h1 + (v1^2 - v2^2)/2;
+
+% Use NASA enthalpy curve to determine T2
+T2 = interp1(hair_a, TR, h2);
+
+% Temperature-dependent entropy at state 2
+sT2 = interp1(TR, sair_a, T2);
+
+% Isentropic condition:
+% s2 - s1 = 0
+%
+% sT2 - sT1 - Rair*ln(P2/P1) = 0
+
+P2 = P1 * exp((sT2 - sT1)/Rair);
+
+fprintf('\n--- DIFFUSER 1 -> 2 ---\n');
+fprintf('h2 = %.2f J/kg\n', h2);
+fprintf('T2 = %.2f K\n', T2);
+fprintf('P2 = %.0f Pa\n', P2);
+
+%% Diffuser checks
+
+assert(T2 > T1, ...
+    'Diffuser check failed: T2 should be greater than T1.');
+
+assert(P2 > P1, ...
+    'Diffuser check failed: P2 should be greater than P1.');
+
+diffuserEnergyResidual = ...
+    (h1 + v1^2/2) - (h2 + v2^2/2);
+
+fprintf('Diffuser energy residual = %.6f J/kg\n', ...
+    diffuserEnergyResidual);
