@@ -61,4 +61,20 @@ Jet engine/
     ├── UNasa.m
     ├── myfind.m
     └── NasaThermalDatabase.mat
+```
 
+---
+
+# Model Assumptions
+
+Current modelling choices. Each one is a single variable in `JetEngine_Group10.m`, so it can be changed in one place if the official model (Turns / Canvas template) says otherwise.
+
+| Assumption | Value in code | Part | Reason |
+|---|---|---|---|
+| Compressor isentropic efficiency | `eta_c = 1.0` (provisional) | 1 | Ideal turbojet (Turns Fig. 8.19); still to be confirmed |
+| Fuel inlet state | `Tfuel = Tref` (H2 gas, 298.15 K) | 2 | Reference state; using 300 K instead changes T4 by only ~0.1 K |
+| Combustor pressure | `P4overP3 = 1` (P4 = P3) | 2 | Constant-pressure combustor of the ideal turbojet |
+| Combustor heat loss | `Qloss = 0` | 2 | Adiabatic combustor: no heat crosses its walls |
+| Combustion | complete: H2 + 0.5 O2 -> H2O | 2 | Very lean mixture (phi ~ 0.17): excess O2, no dissociation |
+
+Species order everywhere: `[H2, O2, CO2, H2O, N2]`. From state 4 on, use the product properties (`hprod_a`, `sprod_a`, `Rprod`), not the air ones.
