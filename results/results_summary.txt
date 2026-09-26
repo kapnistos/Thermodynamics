@@ -1,0 +1,13 @@
+GROUP 10 - PART 4 VALIDATED RESULTS
+Model status: PROVISIONAL assumptions; numerical validation PASS.
+
+Exhaust velocity: 778.827595 m/s
+Combustor outlet: 1082.464159 K
+Compressor / turbine power: 33.241777 / 33.241777 MW
+Air / fuel / products: 118.5636 / 0.5800 / 119.1436 kg/s
+Checks: 21/21 pass; reconstructed efficiencies also pass.
+Largest abs(residual)/tolerance: 0.082143 (Diffuser isentropy); pass limit 1.
+Defaults: eta_c=1.000, eta_t=1.000, eta_n=1.000, Tfuel=298.15 K, P4/P3=1.000, Qloss=0.000 W.
+Lossless shaft; negligible internal kinetic energy; frozen complete-combustion products.
+Exit Mach 1.6023: prescribed fully expanded flow assumes suitable nozzle geometry.
+See PART4_REPORT_SECTION.md for report-ready explanation.
