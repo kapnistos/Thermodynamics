@@ -9,7 +9,7 @@
 % State 4 -> 5 : Turbine
 % State 5 -> 6 : Nozzle
 %
-% At the moment this file contains PART 1 and PART 2.
+% At the moment this file contains PART 1 and PART 2 and Part 3.
 %
 % PART 1:
 %   - Setup
@@ -907,3 +907,160 @@ fprintf('============================================================\n');
 % Wcomp, mair, h2, h3         compressor power the turbine must deliver
 %
 % From state 4 on, use hprod_a, sprod_a and Rprod, never the air ones.
+
+%% ========================================================================
+% PART 3 - TURBINE 4 -> 5 AND NOZZLE 5 -> 6
+% =========================================================================
+%
+% Model assumptions (ideal turbojet, Lecture 2):
+%  - steady flow, adiabatic, negligible potential energy
+%  - turbine drives only the compressor, no shaft losses: Wturb = Wcomp
+%  - kinetic energy at combustor and turbine outlet neglected: v4 = v5 = 0
+%  - nozzle expands to ambient pressure: P6 = Pamb
+%  - composition frozen from state 4 on: only product properties used
+%  - isentropic efficiencies not provided, assumed eta_t = eta_n = 1
+%    (same assumption as eta_c in Part 1)
+
+eta_t = 1.0;    % Turbine isentropic efficiency [-] (assumed)
+eta_n = 1.0;    % Nozzle isentropic efficiency  [-] (assumed)
+v4    = 0;      % Combustor outlet velocity [m/s]
+v5    = 0;      % Turbine outlet velocity   [m/s]
+
+%% ========================================================================
+% TURBINE 4 -> 5
+% =========================================================================
+% Energy balance: Wturb = mprod*(h4 - h5)
+% Shaft balance:  Wturb = Wcomp = mair*(h3 - h2)
+%
+% => h5 = h4 - (mair/mprod)*(h3 - h2)
+
+Wturb = Wcomp;                          % [W]
+h5    = h4 - Wturb/mprod;               % [J/kg]
+T5    = interp1(hprod_a,TR,h5);         % [K]
+
+% Isentropic reference state 5s: eta_t = (h4-h5)/(h4-h5s)
+h5s        = h4 - (h4-h5)/eta_t;
+T5s        = interp1(hprod_a,TR,h5s);
+s5sthermal = interp1(TR,sprod_a,T5s);
+
+% S5s = S4:  s5s_thermal - s4thermal - Rprod*ln(P5/P4) = 0
+P5 = P4*exp((s5sthermal - s4thermal)/Rprod);   % [Pa]
+
+S5s = s5sthermal - Rprod*log(P5/Pref);
+
+s5thermal = interp1(TR,sprod_a,T5);
+S5        = s5thermal - Rprod*log(P5/Pref);    % [J/(kg K)]
+
+%% Turbine checks
+
+% Independent check of the h -> T inversion with the NASA polynomials
+hi5 = zeros(1,NSp);
+for i = 1:NSp
+    hi5(i) = HNasa(T5,SpS(i));
+end
+turbineInversionError  = Yprod*hi5' - h5;           % [J/kg]
+shaftResidual          = mprod*(h4-h5) - Wcomp;     % [W]
+turbineEntropyResidual = S5s - S4;                  % [J/(kg K)]
+
+assert(~any(isnan([T5 T5s])),         'Turbine: T5 or T5s outside TR range.');
+assert(P5 < P4 && T5 < T4,            'Turbine: P and T must drop over turbine.');
+assert(T5 >= T5s - 1e-6,              'Turbine: actual T5 below ideal T5s.');
+assert(S5 >= S4 - 1e-6,               'Turbine: entropy decreases.');
+assert(abs(turbineInversionError) < 1,'Turbine: h -> T inversion error > 1 J/kg.');
+assert(abs(shaftResidual) < 1e-6*Wcomp,     'Turbine: shaft balance not closed.');
+assert(abs(turbineEntropyResidual) < 1e-6,  'Turbine: 5s not isentropic with 4.');
+
+%% Print turbine results
+
+fprintf('\n--- TURBINE 4 -> 5 ---\n');
+fprintf('Assumed eta_t = %.3f\n',eta_t);
+fprintf('T4   = %.2f K\n',T4);
+fprintf('T5s  = %.2f K\n',T5s);
+fprintf('T5   = %.2f K\n',T5);
+fprintf('P4   = %.0f Pa\n',P4);
+fprintf('P5   = %.0f Pa\n',P5);
+fprintf('h5   = %.2f J/kg\n',h5);
+fprintf('S5   = %.2f J/(kg K)\n',S5);
+fprintf('Turbine power          = %.3f MW\n',Wturb/1e6);
+fprintf('Shaft residual         = %.2e W\n',shaftResidual);
+fprintf('h5 inversion error     = %.2e J/kg\n',turbineInversionError);
+
+%% ========================================================================
+% NOZZLE 5 -> 6
+% =========================================================================
+
+P6 = Pamb;                                     % [Pa]
+assert(P5 > P6, 'Nozzle: P5 must be above Pamb.');
+
+% Isentropic reference state 6s: S6s = S5
+s6sthermal = s5thermal + Rprod*log(P6/P5);
+T6s        = interp1(sprod_a,TR,s6sthermal);
+h6s        = interp1(TR,hprod_a,T6s);
+S6s        = s6sthermal - Rprod*log(P6/Pref);
+
+% Actual state 6: eta_n = (h5-h6)/(h5-h6s)
+h6        = h5 - eta_n*(h5-h6s);
+T6        = interp1(hprod_a,TR,h6);
+s6thermal = interp1(TR,sprod_a,T6);
+S6        = s6thermal - Rprod*log(P6/Pref);
+
+% Energy balance: h5 + v5^2/2 = h6 + v6^2/2  (h in J/kg, not kJ/kg)
+v6s = sqrt(v5^2 + 2*(h5-h6s));                 % Ideal exhaust velocity [m/s]
+v6  = sqrt(v5^2 + 2*(h5-h6));                  % Actual exhaust velocity [m/s]
+
+%% Nozzle checks
+
+nozzleEnergyResidual  = (h5 + v5^2/2) - (h6 + v6^2/2);   % [J/kg]
+nozzleEntropyResidual = S6s - S5;                        % [J/(kg K)]
+
+assert(~any(isnan([T6 T6s])),            'Nozzle: T6 or T6s outside TR range.');
+assert(T6 < T5 && h6 < h5,               'Nozzle: T and h must drop over nozzle.');
+assert(v6 > v5,                          'Nozzle: flow does not accelerate.');
+assert(v6 <= v6s + 1e-6,                 'Nozzle: actual v6 above ideal v6s.');
+assert(S6 >= S5 - 1e-6,                  'Nozzle: entropy decreases.');
+assert(abs(nozzleEnergyResidual) < 1e-6, 'Nozzle: energy balance not closed.');
+assert(abs(nozzleEntropyResidual) < 1e-6,'Nozzle: 6s not isentropic with 5.');
+
+%% Print nozzle results
+
+fprintf('\n--- NOZZLE 5 -> 6 ---\n');
+fprintf('Assumed eta_n = %.3f\n',eta_n);
+fprintf('T6s  = %.2f K\n',T6s);
+fprintf('T6   = %.2f K\n',T6);
+fprintf('P6   = %.0f Pa\n',P6);
+fprintf('h6   = %.2f J/kg\n',h6);
+fprintf('S6   = %.2f J/(kg K)\n',S6);
+fprintf('v6s  = %.2f m/s\n',v6s);
+fprintf('v6   = %.2f m/s\n',v6);
+fprintf('Nozzle energy residual = %.2e J/kg\n',nozzleEnergyResidual);
+
+%% ========================================================================
+% PART 3 SUMMARY
+% =========================================================================
+
+fprintf('\n============================================================\n');
+fprintf('                    PART 3 SUMMARY\n');
+fprintf('============================================================\n');
+fprintf('State |   P [kPa] |    T [K] |  v [m/s] | h [kJ/kg] | S [kJ/(kg K)]\n');
+fprintf('  4   | %9.2f | %8.2f | %8.2f | %9.2f | %8.4f\n',P4/kPa,T4,v4,h4/kJ,S4/kJ);
+fprintf('  5   | %9.2f | %8.2f | %8.2f | %9.2f | %8.4f\n',P5/kPa,T5,v5,h5/kJ,S5/kJ);
+fprintf('  6   | %9.2f | %8.2f | %8.2f | %9.2f | %8.4f\n',P6/kPa,T6,v6,h6/kJ,S6/kJ);
+fprintf('\nTurbine power = %.3f MW (= compressor power %.3f MW)\n', ...
+    Wturb/1e6,Wcomp/1e6);
+fprintf('Assumed eta_t = %.2f, eta_n = %.2f\n',eta_t,eta_n);
+fprintf('============================================================\n');
+
+%% ========================================================================
+% END OF PART 3
+% =========================================================================
+%
+% Values required by Part 4:
+%
+% T5, P5, h5, S5          turbine outlet state
+% T5s, h5s, S5s           ideal turbine reference (validation)
+% T6, P6, h6, S6, v6      nozzle outlet state + exhaust velocity
+% T6s, h6s, S6s, v6s      ideal nozzle reference (validation)
+% v4, v5                  velocities for the state table
+% Wturb                   shaft-balance validation
+% shaftResidual, nozzleEnergyResidual,
+% turbineEntropyResidual, nozzleEntropyResidual   residuals for 6.4
