@@ -78,3 +78,5 @@ Current modelling choices. Each one is a single variable in `JetEngine_Group10.m
 | Combustion | complete: H2 + 0.5 O2 -> H2O | 2 | Very lean mixture (phi ~ 0.17): excess O2, no dissociation |
 
 Species order everywhere: `[H2, O2, CO2, H2O, N2]`. From state 4 on, use the product properties (`hprod_a`, `sprod_a`, `Rprod`), not the air ones.
+
+<!-- Git push test: 2026-09-26 -->
