@@ -49,6 +49,8 @@ PART4_REPORT_SECTION.md is a shorter, report-ready version of this explanation. 
 
 The validation CSV now includes abs(residual)/tolerance. Its largest baseline value is 0.082143, well below the pass limit of 1; this is not a relative physical error. Failed residuals are exported before the script stops, and the error identifies the failed checks. A regenerated results_summary.txt collects the main numbers and provisional assumptions.
 
+Each model run starts with an INCOMPLETE status and becomes PASS only after its exports finish. Out-of-grid property inversions stop with the component name. The PDF builder reads the current numerical results and accepts independent verification only when its run ID matches. The Markdown examples here describe the default baseline; `START_HERE.md` explains the components and a suggested study sequence.
+
 ## What Part 4 does, step by step
 
 ### 1. Connect the parts and make the run reproducible

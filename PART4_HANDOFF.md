@@ -18,6 +18,7 @@
 
 | Purpose | File |
 |---|---|
+| Understand the engine and get started | `START_HERE.md` |
 | Run the complete cycle | `JetEngine_Group10.m` |
 | Verify with the separate root solver | `verify_group10.m` |
 | Your report section | `PART4_REPORT_SECTION.md` |
@@ -41,8 +42,8 @@ Do not use `Assignment.m` or `untitled2.m` as the Group 10 entry point.
 - [ ] Check the current group-settings file against the recorded Group 10 inputs.
 - [ ] Confirm the current Canvas naming/group rules. The supplied 2026 lecture
       states 9 October regular and 16 October late submission.
-- [ ] If official inputs change, rerun the model and verification, then refresh
-      the report tables and figure before exporting the final PDF.
+- [ ] If official inputs change, run `verify_group10`, then rebuild the PDF.
+      Update baseline examples in the Markdown report section before using them.
 - [ ] Submit the final report PDF and runnable scripts ZIP through Canvas.
 
 No Canvas submission or official confirmation is represented by the checked
@@ -52,6 +53,9 @@ technical work above.
 
 The optional Python report builder reads the MATLAB results. Install the package
 listed in `requirements-report.txt`, then run `python scripts/build_report.py`.
-It writes `reports/Group10_report_provisional.pdf`. Review the output before use;
-the current narrative describes the ideal baseline and must be revised if the
-model settings change. Python is not needed to run the MATLAB model.
+It writes `reports/Group10_report_provisional.pdf`, with numerical text, tables
+and figures drawn from the current results. It refuses incomplete model runs
+and only reports a direct-root verification when it belongs to the same run.
+Review the output and physical assumptions before use. The Markdown guide and
+report section contain labelled baseline examples; they are not regenerated.
+Python is not needed to run the MATLAB model.

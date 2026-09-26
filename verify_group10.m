@@ -37,3 +37,11 @@ disp(referenceTable);
 fprintf('Direct-root reference v6 = %.9f m/s; difference = %.9f m/s\n',rv6,v6-rv6);
 fprintf('Independent direct-root reference: PASS\n');
 writetable(referenceTable,fullfile(resultsDir,'direct_root_comparison.csv'));
+verificationSummary = struct('run_id',runId,'status','PASS', ...
+    'max_temperature_error_K',max(abs(Difference_K)), ...
+    'velocity_error_m_s',abs(v6-rv6), ...
+    'max_pressure_error_Pa',max(abs([P2 P3 P5]-[rP2 rP3 rP5])));
+fid = fopen(fullfile(resultsDir,'verification_summary.json'),'w');
+assert(fid>=0,'Cannot save the direct-root verification summary.');
+fprintf(fid,'%s\n',jsonencode(verificationSummary));
+fclose(fid);

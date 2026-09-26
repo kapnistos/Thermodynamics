@@ -41,6 +41,14 @@ clc;
 % The General folder must be inside the main project folder.
 projectRoot = fileparts(mfilename('fullpath'));
 relativepath_to_generalfolder = fullfile(projectRoot,'General');
+resultsDir = fullfile(projectRoot,'results');
+if ~isfolder(resultsDir), mkdir(resultsDir); end
+runId = char(datetime('now','TimeZone','UTC','Format','yyyyMMdd''T''HHmmssSSS'));
+writeJson(fullfile(resultsDir,'run_status.json'),struct('run_id',runId,'status','INCOMPLETE'));
+fid = fopen(fullfile(resultsDir,'results_summary.txt'),'w');
+assert(fid>=0,'Cannot write to the results folder.');
+fprintf(fid,'Latest run is incomplete. Do not use earlier results until this run finishes.\n');
+fclose(fid);
 
 % Check that the General folder exists
 assert(isfolder(relativepath_to_generalfolder), ...
@@ -97,8 +105,7 @@ AF       = 204.42;       % Air-fuel ratio [-]
 cFuel    = 'H2';         % Fuel
 
 %% PROVISIONAL MODEL SETTINGS - confirm against current Canvas/Turns
-% User authorized retaining the repository defaults on 2026-09-26.
-% Authorization to use these defaults is NOT course confirmation.
+% These are the existing repository defaults, not confirmed course settings.
 eta_c = 1.0;             % Compressor isentropic efficiency [-]
 eta_t = 1.0;             % Turbine isentropic efficiency [-]
 eta_n = 1.0;             % Nozzle enthalpy-drop efficiency [-]
@@ -107,11 +114,21 @@ P4overP3 = 1;            % No combustor pressure loss [-]
 Qloss = 0;              % Adiabatic combustor [W]
 % Fixed assumptions: lossless shaft; v2=v3=v4=v5=0; complete combustion;
 % frozen products, no dissociation; fully expanded nozzle P6=Pamb.
-assert(all(isfinite([eta_c eta_t eta_n Tfuel P4overP3 Qloss])));
+assert(isreal([eta_c eta_t eta_n Tfuel P4overP3 Qloss]) && ...
+    all(isfinite([eta_c eta_t eta_n Tfuel P4overP3 Qloss])), ...
+    'Efficiencies, fuel temperature and loss settings must be finite real numbers.');
 assert(all([eta_c eta_t eta_n] > 0 & [eta_c eta_t eta_n] <= 1), ...
     'Component efficiencies must lie in (0,1].');
 assert(Tfuel >= 200 && Tfuel <= 3000 && P4overP3 > 0 && P4overP3 <= 1 ...
     && Qloss >= 0, 'Invalid fuel temperature, pressure ratio or heat loss.');
+assert(isreal([v1 Tamb P3overP2 Pamb mfurate AF]) && ...
+    all(isfinite([v1 Tamb P3overP2 Pamb mfurate AF])), ...
+    'Group inputs must be finite real numbers.');
+assert(v1>0 && Tamb>=200 && Tamb<=3000 && P3overP2>1 && ...
+    Pamb>0 && mfurate>0 && AF>0, ...
+    'This flight case requires v1>0, 200<=Tamb<=3000 K, pressure ratio>1, and positive pressure/flows.');
+assert(strcmp(cFuel,'H2'), ...
+    'This chemistry is for H2. Changing fuel requires changing the reaction model.');
 fprintf('\nPROVISIONAL DEFAULTS: confirm efficiencies and loss assumptions before submission.\n');
 
 % Air-fuel ratio definition:
@@ -143,6 +160,7 @@ fprintf('Flight velocity      : %.2f m/s\n',v1);
 % [H2, O2, CO2, H2O, N2]
 
 iSp = myfind({Sp.Name},{cFuel,'O2','CO2','H2O','N2'});
+assert(all(iSp>0),'A required species is missing from the NASA database.');
 
 % Select only the required species from the NASA database
 SpS = Sp(iSp);
@@ -329,7 +347,7 @@ h2 = h1 + 0.5*v1^2 - 0.5*v2^2;
 %
 % h2 -> T2
 
-T2 = interp1(hair_a,TR,h2);
+T2 = invertProperty(hair_a,TR,h2,'Diffuser T2');
 
 %% Thermal entropy at state 2
 
@@ -431,7 +449,7 @@ s3sthermal = ...
 %
 % s3s_thermal -> T3s
 
-T3s = interp1(sair_a,TR,s3sthermal);
+T3s = invertProperty(sair_a,TR,s3sthermal,'Compressor T3s');
 
 %% Determine ideal compressor outlet enthalpy
 
@@ -520,7 +538,7 @@ h3 = h2 + (h3s-h2)/eta_c;
 
 %% Determine actual compressor outlet temperature
 
-T3 = interp1(hair_a,TR,h3);
+T3 = invertProperty(hair_a,TR,h3,'Compressor T3');
 
 %% Thermal entropy at state 3
 
@@ -809,7 +827,7 @@ h4 = (Hdot_in - Qloss)/mprod;           % Specific enthalpy leaving [J/kg]
 % the gas onto a different h(T) curve. On the product curve the same
 % enthalpy belongs to a much higher temperature.
 
-T4 = interp1(hprod_a,TR,h4);
+T4 = invertProperty(hprod_a,TR,h4,'Combustor T4');
 
 assert(~isnan(T4), ...
     'Combustor check failed: T4 is outside the temperature range TR.');
@@ -951,11 +969,11 @@ v5    = 0;      % Turbine outlet velocity   [m/s]
 
 Wturb = Wcomp;                          % [W]
 h5    = h4 - Wturb/mprod;               % [J/kg]
-T5    = interp1(hprod_a,TR,h5);         % [K]
+T5    = invertProperty(hprod_a,TR,h5,'Turbine T5'); % [K]
 
 % Isentropic reference state 5s: eta_t = (h4-h5)/(h4-h5s)
 h5s        = h4 - (h4-h5)/eta_t;
-T5s        = interp1(hprod_a,TR,h5s);
+T5s        = invertProperty(hprod_a,TR,h5s,'Turbine T5s');
 s5sthermal = interp1(TR,sprod_a,T5s);
 
 % S5s = S4:  s5s_thermal - s4thermal - Rprod*ln(P5/P4) = 0
@@ -1009,13 +1027,13 @@ assert(P5 > P6, 'Nozzle: P5 must be above Pamb.');
 
 % Isentropic reference state 6s: S6s = S5
 s6sthermal = s5thermal + Rprod*log(P6/P5);
-T6s        = interp1(sprod_a,TR,s6sthermal);
+T6s        = invertProperty(sprod_a,TR,s6sthermal,'Nozzle T6s');
 h6s        = interp1(TR,hprod_a,T6s);
 S6s        = s6sthermal - Rprod*log(P6/Pref);
 
 % Actual state 6: eta_n = (h5-h6)/(h5-h6s)
 h6        = h5 - eta_n*(h5-h6s);
-T6        = interp1(hprod_a,TR,h6);
+T6        = invertProperty(hprod_a,TR,h6,'Nozzle T6');
 s6thermal = interp1(TR,sprod_a,T6);
 S6        = s6thermal - Rprod*log(P6/Pref);
 
@@ -1290,6 +1308,35 @@ nexttile; plot(State,Vstate,'o-','LineWidth',1.8); grid on;
 xlabel('State'); ylabel('Velocity [m/s]'); title('Negligible internal KE approximation');
 nexttile; bar(categorical(string({SpS.Name})),Yprod); grid on;
 ylabel('Product mass fraction [-]'); title('Lean hydrogen combustion products');
-sgtitle('Group 10 - PROVISIONAL ideal baseline');
+sgtitle('Group 10 - provisional settings');
 exportgraphics(fig,fullfile(resultsDir,'cycle_overview.png'),'Resolution',160);
 close(fig);
+
+% The report reads this run's values rather than typed-in baseline answers.
+modelSummary = struct('run_id',runId,'status','PASS', ...
+    'eta_c',eta_c,'eta_t',eta_t,'eta_n',eta_n,'Tfuel',Tfuel, ...
+    'P4overP3',P4overP3,'Qloss',Qloss,'Tamb',Tamb,'Pamb',Pamb, ...
+    'P3overP2',P3overP2,'AF',AF,'mair',mair,'mfuel',mfurate, ...
+    'mprod',mprod,'v1',v1,'v6',v6,'T4',T4,'T3s',T3s, ...
+    'Wcomp',Wcomp,'Wturb',Wturb,'Mach6',Mach6,'phi',phi);
+writeJson(fullfile(resultsDir,'model_summary.json'),modelSummary);
+writeJson(fullfile(resultsDir,'run_status.json'),struct('run_id',runId,'status','PASS'));
+
+function T = invertProperty(propertyCurve,temperatureGrid,target,label)
+% Keep the original linear interpolation, but reject invalid targets early.
+assert(isreal(target) && isscalar(target) && isfinite(target), ...
+    '%s: target property is not a finite real scalar.',label);
+assert(all(isfinite(propertyCurve)) && all(diff(propertyCurve)>0), ...
+    '%s: NASA property curve must be finite and increasing.',label);
+assert(target>=propertyCurve(1) && target<=propertyCurve(end), ...
+    '%s: solution is outside %.0f-%.0f K. Check the inputs and component settings.', ...
+    label,temperatureGrid(1),temperatureGrid(end));
+T = interp1(propertyCurve,temperatureGrid,target);
+end
+
+function writeJson(path,value)
+fid = fopen(path,'w');
+assert(fid>=0,'Cannot write %s.',path);
+cleanup = onCleanup(@() fclose(fid));
+fprintf(fid,'%s\n',jsonencode(value));
+end

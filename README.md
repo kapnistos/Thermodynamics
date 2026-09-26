@@ -2,7 +2,7 @@
 # 4EB00 Thermodynamics - Jet Engine Project
 
 Run `JetEngine_Group10` for the complete cycle; run `verify_group10` to check it.
-Part 4 results and the report are in `results/` and `reports/`.
+Start with `START_HERE.md`; results and the report are in `results/` and `reports/`.
 The current efficiency and loss settings are provisional; see `PART4_HANDOFF.md` before submission.
 
 This repository contains the MATLAB model for the 4EB00 Thermodynamics Jet Engine assignment.

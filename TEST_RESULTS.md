@@ -33,3 +33,22 @@ reconstructed efficiencies also pass. In a separate nonideal test,
 eta_c=0.85, eta_t=0.90 and eta_n=0.95 reconstruct within 0.0001.
 An injected diffuser residual at ten times its tolerance is correctly rejected;
 the error names the check and the failed row is saved in validation.csv.
+
+## Review and report consistency checks
+
+- Repeated the default MATLAB run and direct-root comparison: all checks pass;
+  the original six temperatures and exhaust speed still match exactly.
+- Repeated the nonideal case above with the separate solver: all checks pass.
+- Set eta_c=0.00001 in an isolated copy: the model rejects the out-of-range
+  compressor temperature with a component-specific error and leaves the latest
+  run marked INCOMPLETE, even when older successful output files are present.
+- Built a report from the nonideal run: its speed, temperature, shaft power and
+  efficiencies match that run; the previous baseline answers are absent.
+- Confirmed the report builder rejects an incomplete model run.
+- Gave a verification summary an older run ID in an isolated copy: the report
+  correctly states that verification is unavailable for the current run.
+- Rebuilt the default five-page PDF and visually inspected every page.
+
+Run IDs connect the model and independent verification summaries. They prevent
+accidental reuse of earlier verification; they are not a file-integrity or
+tamper-detection mechanism.

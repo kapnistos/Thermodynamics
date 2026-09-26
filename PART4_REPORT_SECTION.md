@@ -43,7 +43,7 @@ Each residual is assessed against an explicit tolerance. The exported tolerance 
 
 The diffuser converts inlet kinetic energy into enthalpy, and the compressor further increases temperature and pressure. Combustion raises the temperature to 1082.46 K. The turbine then supplies 33.242 MW to the compressor, and the nozzle converts the remaining enthalpy drop into an exhaust velocity of 778.83 m/s. These trends are consistent with the chosen component models.
 
-All 21 residual checks pass. The whole-engine energy residual is 3.29 W, and the maximum enthalpy inversion error is 0.02761 J/kg. A separate calculation using direct NASA functions and a root solver agrees within 0.00045 K and 0.00067 m/s, showing that interpolation error is negligible at the displayed precision.
+All 21 residual checks pass. The whole-engine energy residual is 3.29 W, and the maximum enthalpy inversion error is 0.0276 J/kg. A separate calculation using direct NASA functions and a root solver agrees within 0.00045 K and 0.00067 m/s, showing that interpolation error is negligible at the displayed precision.
 
 The negative exhaust enthalpy, approximately -281.49 kJ/kg, is consistent with the NASA formation-enthalpy reference. Nozzle acceleration depends on the positive difference h5-h6, not on the sign of either absolute enthalpy. The final state table also includes mixing entropy. The original entropy convention remains valid for fixed-composition isentropic differences, but the air and product entropy values should not be used alone to calculate combustor entropy generation.
 
