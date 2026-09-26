@@ -9,7 +9,7 @@
 % State 4 -> 5 : Turbine
 % State 5 -> 6 : Nozzle
 %
-% At the moment this file contains PART 1 and PART 2 and Part 3.
+% Parts 1-4: integrated cycle, independent validation and exported results.
 %
 % PART 1:
 %   - Setup
@@ -29,7 +29,7 @@
 % Compressor efficiency eta_c is temporarily assumed to be 1.0.
 % This must be checked/replaced before final submission.
 
-clear all;
+clearvars;
 close all;
 clc;
 
@@ -39,7 +39,8 @@ clc;
 
 % Relative path to the General folder.
 % The General folder must be inside the main project folder.
-relativepath_to_generalfolder = 'General';
+projectRoot = fileparts(mfilename('fullpath'));
+relativepath_to_generalfolder = fullfile(projectRoot,'General');
 
 % Check that the General folder exists
 assert(isfolder(relativepath_to_generalfolder), ...
@@ -50,7 +51,7 @@ addpath(relativepath_to_generalfolder);
 
 %% Load NASA database
 
-TdataBase = fullfile('General','NasaThermalDatabase');
+TdataBase = fullfile(relativepath_to_generalfolder,'NasaThermalDatabase');
 
 assert(isfile([TdataBase '.mat']), ...
     'NasaThermalDatabase.mat not found inside General.');
@@ -94,6 +95,24 @@ mfurate  = 0.58*kg/s;    % Fuel mass flow rate [kg/s]
 AF       = 204.42;       % Air-fuel ratio [-]
 
 cFuel    = 'H2';         % Fuel
+
+%% PROVISIONAL MODEL SETTINGS - confirm against current Canvas/Turns
+% User authorized retaining the repository defaults on 2026-09-26.
+% Authorization to use these defaults is NOT course confirmation.
+eta_c = 1.0;             % Compressor isentropic efficiency [-]
+eta_t = 1.0;             % Turbine isentropic efficiency [-]
+eta_n = 1.0;             % Nozzle enthalpy-drop efficiency [-]
+Tfuel = Tref;            % Pure H2 gas inlet temperature [K]
+P4overP3 = 1;            % No combustor pressure loss [-]
+Qloss = 0;              % Adiabatic combustor [W]
+% Fixed assumptions: lossless shaft; v2=v3=v4=v5=0; complete combustion;
+% frozen products, no dissociation; fully expanded nozzle P6=Pamb.
+assert(all(isfinite([eta_c eta_t eta_n Tfuel P4overP3 Qloss])));
+assert(all([eta_c eta_t eta_n] > 0 & [eta_c eta_t eta_n] <= 1), ...
+    'Component efficiencies must lie in (0,1].');
+assert(Tfuel >= 200 && Tfuel <= 3000 && P4overP3 > 0 && P4overP3 <= 1 ...
+    && Qloss >= 0, 'Invalid fuel temperature, pressure ratio or heat loss.');
+fprintf('\nPROVISIONAL DEFAULTS: confirm efficiencies and loss assumptions before submission.\n');
 
 % Air-fuel ratio definition:
 %
@@ -477,14 +496,13 @@ fprintf('Isentropic entropy residual = %.6f J/(kg K)\n', ...
 %
 % For now:
 %
-% eta_c = 1.0
+% eta_c is set in the central model settings.
 %
 % This temporarily means that the compressor is treated as perfectly
 % isentropic.
 %
 % THIS VALUE MUST BE CHECKED BEFORE FINAL SUBMISSION.
 
-eta_c = 1.0;
 
 %% Compressor isentropic efficiency
 %
@@ -638,9 +656,7 @@ fprintf('============================================================\n');
 %% Part 2 model inputs
 % Only these lines need to change if the official model differs.
 
-Tfuel    = Tref;     % Fuel inlet temperature [K]
-P4overP3 = 1;        % Combustor pressure ratio [-] (1 = no pressure loss)
-Qloss    = 0;        % Heat lost to the surroundings [W]
+% Values are defined once in the provisional model settings near the top.
 
 % Qloss = 0 because the combustor is assumed adiabatic: no heat crosses
 % its walls, so all energy released by the reaction stays in the gas.
@@ -921,8 +937,7 @@ fprintf('============================================================\n');
 %  - isentropic efficiencies not provided, assumed eta_t = eta_n = 1
 %    (same assumption as eta_c in Part 1)
 
-eta_t = 1.0;    % Turbine isentropic efficiency [-] (assumed)
-eta_n = 1.0;    % Nozzle isentropic efficiency  [-] (assumed)
+% Efficiencies are defined once in the provisional model settings.
 v4    = 0;      % Combustor outlet velocity [m/s]
 v5    = 0;      % Turbine outlet velocity   [m/s]
 
@@ -1064,3 +1079,217 @@ fprintf('============================================================\n');
 % Wturb                   shaft-balance validation
 % shaftResidual, nozzleEnergyResidual,
 % turbineEntropyResidual, nozzleEntropyResidual   residuals for 6.4
+
+%% ========================================================================
+% PART 4 - INTEGRATION, INDEPENDENT VALIDATION AND RESULTS
+% =========================================================================
+% Keep Parts 1-3 as the calculation chain. Re-evaluate NASA polynomials here
+% at the solved temperatures, rather than checking identities constructed
+% from the same enthalpy targets. SI units internally; display units in tables.
+
+resultsDir = fullfile(projectRoot,'results');
+if ~isfolder(resultsDir), mkdir(resultsDir); end
+
+v3 = 0;  % Negligible compressor outlet KE, consistent with combustor model.
+Tstate = [T1 T2 T3 T4 T5 T6];
+Pstate = [P1 P2 P3 P4 P5 P6];
+Vstate = [v1 v2 v3 v4 v5 v6];
+Htarget = [h1 h2 h3 h4 h5 h6];
+Smodel = [S1 S2 S3 S4 S5 S6];
+Mflow = [mair mair mair mprod mprod mprod];
+Ystate = [repmat(Yair,3,1); repmat(Yprod,3,1)];
+Xstate = [repmat(Xair,3,1); repmat(Xprod,3,1)];
+Rstate = [Rg Rg Rg Rprod Rprod Rprod];
+assert(isreal([Tstate Pstate Vstate Htarget Smodel]) && ...
+    all(isfinite([Tstate Pstate Vstate Htarget Smodel])), ...
+    'Part 4: all state properties must be finite and real.');
+assert(all(Tstate >= min(TR) & Tstate <= max(TR)) && all(Pstate > 0), ...
+    'Part 4: temperature outside property grid or nonpositive pressure.');
+assert(all(diff(hair_a)>0) && all(diff(hprod_a)>0) && ...
+    all(diff(sair_a)>0) && all(diff(sprod_a)>0), ...
+    'Part 4: inverse interpolation requires monotonic property arrays.');
+
+Hdirect = zeros(1,6); STdirect = Hdirect; Cpdirect = Hdirect;
+Smix = Hdirect;
+for j = 1:6
+    hi = zeros(1,NSp); si = hi; cpi = hi;
+    for i = 1:NSp
+        hi(i) = HNasa(Tstate(j),SpS(i));
+        si(i) = SNasa(Tstate(j),SpS(i));
+        cpi(i) = CpNasa(Tstate(j),SpS(i));
+    end
+    Hdirect(j) = Ystate(j,:)*hi';
+    STdirect(j) = Ystate(j,:)*si';
+    Cpdirect(j) = Ystate(j,:)*cpi';
+    % Ideal-mixture entropy uses partial pressures Xi*P. Exclude Xi=0
+    % explicitly to avoid 0*log(0). Retain old S separately for traceability.
+    present = Xstate(j,:) > 0;
+    mixing = -sum(Ystate(j,present).*(Runiv./Mi(present)).* ...
+        log(Xstate(j,present)));
+    Smix(j) = STdirect(j)-Rstate(j)*log(Pstate(j)/Pref)+mixing;
+end
+Sdirect = STdirect - Rstate.*log(Pstate/Pref);
+
+% Independently reconstruct ideal-state entropy from the solved T3s/T5s/T6s.
+Tideal = [T3s T5s T6s]; Pideal = [P3 P5 P6];
+Yideal = [Yair; Yprod; Yprod]; Rideal = [Rg Rprod Rprod];
+SidealDirect = zeros(1,3); HidealDirect = zeros(1,3);
+for j = 1:3
+    si = zeros(1,NSp); hi = zeros(1,NSp);
+    for i = 1:NSp
+        si(i) = SNasa(Tideal(j),SpS(i));
+        hi(i) = HNasa(Tideal(j),SpS(i));
+    end
+    SidealDirect(j) = Yideal(j,:)*si' - Rideal(j)*log(Pideal(j)/Pref);
+    HidealDirect(j) = Yideal(j,:)*hi';
+end
+
+% Tolerances reflect a 1 K interpolation grid: 1 J/kg for a single
+% enthalpy inversion, 0.01 J/(kg K) for entropy. Flow balances allow
+% 1 J/kg per independently evaluated inlet/outlet. These are numerical
+% tolerances, not estimates of the physical model uncertainty.
+hTol = 1; sTol = 0.01;
+Check = ["Diffuser energy";"Compressor power";"Combustor energy"; ...
+    "Turbine power";"Shaft power";"Nozzle energy";"Whole engine energy"; ...
+    "Combustion mass";"Element H";"Element O";"Element C";"Element N"; ...
+    "Air X sum";"Air Y sum";"Product X sum";"Product Y sum"; ...
+    "Max h inversion";"Diffuser isentropy";"Compressor reference isentropy"; ...
+    "Turbine reference isentropy";"Nozzle reference isentropy"];
+Residual = [Hdirect(1)+v1^2/2-Hdirect(2)-v2^2/2; ...
+    mair*(Hdirect(3)-Hdirect(2))-Wcomp; ...
+    mair*Hdirect(3)+mfurate*hfuel-Qloss-mprod*Hdirect(4); ...
+    mprod*(Hdirect(4)-Hdirect(5))-Wturb; ...
+    mprod*(Hdirect(4)-Hdirect(5))-mair*(Hdirect(3)-Hdirect(2)); ...
+    Hdirect(5)+v5^2/2-Hdirect(6)-v6^2/2; ...
+    (mair*(Hdirect(1)+v1^2/2)+mfurate*hfuel ...
+        -mprod*(Hdirect(6)+v6^2/2)-Qloss); ...
+    sum(mdot_prod)-mair-mfurate; elementsOut-elementsIn; ...
+    sum(Xair)-1;sum(Yair)-1;sum(Xprod)-1;sum(Yprod)-1; ...
+    max(abs(Hdirect-Htarget)); Sdirect(2)-Sdirect(1); ...
+    SidealDirect(1)-Sdirect(2);SidealDirect(2)-Sdirect(4); ...
+    SidealDirect(3)-Sdirect(5)];
+Tolerance = [2*hTol;2*mair*hTol;(mair+mprod)*hTol;2*mprod*hTol; ...
+    2*(mair+mprod)*hTol;2*hTol;(mair+mprod)*hTol;1e-9*mprod; ...
+    1e-9*max(abs(elementsIn),1);1e-10;1e-10;1e-10;1e-10; ...
+    hTol;sTol;sTol;sTol;sTol];
+Unit = ["J/kg";"W";"W";"W";"W";"J/kg";"W";"kg/s"; ...
+    repmat("mol atoms/s",4,1);repmat("-",4,1);"J/kg"; ...
+    repmat("J/(kg K)",4,1)];
+Passed = isfinite(Residual) & abs(Residual) <= Tolerance;
+ToleranceFraction = abs(Residual)./Tolerance;
+validationTable = table(Check,Residual,Tolerance,Unit,ToleranceFraction,Passed);
+% A fraction <= 1 passes. This is NOT relative physical error: its
+% denominator is the numerical acceptance tolerance for this specific check.
+writetable(validationTable,fullfile(resultsDir,'validation.csv'));
+disp(validationTable);
+assert(all(Passed), 'Part 4 failed: %s. Inspect results/validation.csv.', ...
+    strjoin(Check(~Passed),', '));
+
+% Compare actual and ideal states explicitly, and reconstruct efficiencies
+% from direct NASA enthalpies to check both definitions and state inversions.
+Component = ["Compressor";"Turbine";"Nozzle"];
+EtaSpecified = [eta_c;eta_t;eta_n];
+EtaReconstructed = [(HidealDirect(1)-Hdirect(2))/(Hdirect(3)-Hdirect(2)); ...
+    (Hdirect(4)-Hdirect(5))/(Hdirect(4)-HidealDirect(2)); ...
+    (Hdirect(5)-Hdirect(6))/(Hdirect(5)-HidealDirect(3))];
+ActualOutlet_K = [T3;T5;T6]; IdealOutlet_K = Tideal';
+DeltaS_J_kgK = [Sdirect(3)-Sdirect(2);Sdirect(5)-Sdirect(4); ...
+    Sdirect(6)-Sdirect(5)];
+componentTable = table(Component,EtaSpecified,EtaReconstructed, ...
+    ActualOutlet_K,IdealOutlet_K,DeltaS_J_kgK);
+assert(all(abs(EtaReconstructed-EtaSpecified)<1e-4), ...
+    'Part 4: reconstructed efficiencies disagree with specified values.');
+
+assert(all(Yprod>=0) && all(Xprod>=0), 'Negative product fraction.');
+assert(T2>T1 && T3>T2 && T4>T3 && T5<T4 && T6<T5, ...
+    'Part 4: unexpected temperature trend.');
+assert(P2>P1 && P3>P2 && P4<=P3 && P5<P4 && P5>P6 && P6==Pamb, ...
+    'Part 4: unexpected pressure trend.');
+assert(T3>=T3s-1e-6 && T5>=T5s-1e-6 && T6>=T6s-1e-6 && v6<=v6s+1e-6, ...
+    'Part 4: inconsistent efficiency trend.');
+assert(all([Sdirect(3)-Sdirect(2),Sdirect(5)-Sdirect(4), ...
+    Sdirect(6)-Sdirect(5)] >= -sTol), ...
+    'Part 4: entropy decreases in an adiabatic component.');
+
+State = (1:6)';
+Location = ["Inlet";"Diffuser outlet";"Compressor outlet"; ...
+    "Combustor outlet";"Turbine outlet";"Nozzle exit"];
+Mixture = [repmat("Air",3,1);repmat("Products",3,1)];
+stateTable = table(State,Location,Mixture,Tstate',Pstate'/kPa,Vstate', ...
+    Hdirect'/kJ,Smix'/kJ,Smodel'/kJ,Mflow', ...
+    'VariableNames',{'State','Location','Mixture','T_K','P_kPa','v_m_s', ...
+    'h_kJ_kg','s_mix_kJ_kgK','s_model_kJ_kgK','mdot_kg_s'});
+compositionTable = table(string({SpS.Name})',Mi',Xair',Yair',Xprod',Yprod', ...
+    mdot_prod','VariableNames',{'Species','M_kg_mol','Xair','Yair', ...
+    'Xprod','Yprod','mdot_products_kg_s'});
+
+% A local frozen-composition sound speed diagnoses the prescribed expansion.
+% No constant-cp/Poisson relation is used to solve the cycle.
+assert(all(Cpdirect>Rstate), 'Invalid heat capacity for sound-speed check.');
+gamma6 = Cpdirect(6)/(Cpdirect(6)-Rprod);
+Mach6 = v6/sqrt(gamma6*Rprod*T6);
+
+Setting = ["eta_c";"eta_t";"eta_n";"Tfuel_K";"P4overP3"; ...
+    "Qloss_W";"shaft_efficiency";"v2_v3_v4_v5_m_s"];
+Value = [eta_c;eta_t;eta_n;Tfuel;P4overP3;Qloss;1;0];
+Status = repmat("PROVISIONAL default - confirm against Canvas/Turns",8,1);
+assumptionsTable = table(Setting,Value,Status);
+
+fprintf('\n================ PART 4: CHECKED FINAL RESULTS ================\n');
+disp(stateTable);
+disp(compositionTable);
+fprintf('Air / fuel / products: %.4f / %.4f / %.4f kg/s\n',mair,mfurate,mprod);
+fprintf('Compressor / turbine: %.6f / %.6f MW\n',Wcomp/1e6,Wturb/1e6);
+fprintf('Exhaust velocity: %.6f m/s; exit Mach number: %.4f\n',v6,Mach6);
+fprintf('Independent numerical checks: %d/%d passed.\n',sum(Passed),numel(Passed));
+[worstFraction,worstIndex] = max(ToleranceFraction);
+fprintf('Largest tolerance fraction: %.4f (%s); limit = 1.\n', ...
+    worstFraction,Check(worstIndex));
+disp(componentTable);
+fprintf('s_mix includes mixing entropy; s_model retains the original convention.\n');
+fprintf('Negative product enthalpy is permitted by the formation-enthalpy reference.\n');
+if Mach6 > 1
+    fprintf('P6=Pamb implies supersonic fully expanded flow: suitable nozzle geometry is assumed.\n');
+end
+disp(assumptionsTable);
+fprintf('Defaults are not officially confirmed. See PART4_EXPLANATION.md.\n');
+
+writetable(stateTable,fullfile(resultsDir,'state_table.csv'));
+writetable(compositionTable,fullfile(resultsDir,'composition.csv'));
+writetable(componentTable,fullfile(resultsDir,'component_comparison.csv'));
+writetable(assumptionsTable,fullfile(resultsDir,'provisional_assumptions.csv'));
+save(fullfile(resultsDir,'Group10_results.mat'),'stateTable','compositionTable', ...
+    'validationTable','componentTable','assumptionsTable','Wcomp','Wturb','v6','Mach6','phi');
+
+% A short, regenerated summary that a teammate can read without MATLAB.
+summaryPath = fullfile(resultsDir,'results_summary.txt');
+fid = fopen(summaryPath,'w');
+assert(fid>=0,'Could not open results summary for writing.');
+fprintf(fid,'GROUP 10 - PART 4 VALIDATED RESULTS\n');
+fprintf(fid,'Model status: PROVISIONAL assumptions; numerical validation PASS.\n\n');
+fprintf(fid,'Exhaust velocity: %.6f m/s\n',v6);
+fprintf(fid,'Combustor outlet: %.6f K\n',T4);
+fprintf(fid,'Compressor / turbine power: %.6f / %.6f MW\n',Wcomp/1e6,Wturb/1e6);
+fprintf(fid,'Air / fuel / products: %.4f / %.4f / %.4f kg/s\n',mair,mfurate,mprod);
+fprintf(fid,'Checks: %d/%d pass; reconstructed efficiencies also pass.\n',sum(Passed),numel(Passed));
+fprintf(fid,'Largest abs(residual)/tolerance: %.6f (%s); pass limit 1.\n',worstFraction,Check(worstIndex));
+fprintf(fid,'Defaults: eta_c=%.3f, eta_t=%.3f, eta_n=%.3f, Tfuel=%.2f K, P4/P3=%.3f, Qloss=%.3f W.\n', ...
+    eta_c,eta_t,eta_n,Tfuel,P4overP3,Qloss);
+fprintf(fid,'Lossless shaft; negligible internal kinetic energy; frozen complete-combustion products.\n');
+fprintf(fid,'Exit Mach %.4f: prescribed fully expanded flow assumes suitable nozzle geometry.\n',Mach6);
+fprintf(fid,'See PART4_REPORT_SECTION.md for report-ready explanation.\n');
+fclose(fid);
+
+fig = figure('Visible','off','Color','white','Position',[100 100 1100 700]);
+tiledlayout(2,2,'TileSpacing','compact');
+nexttile; plot(State,Tstate,'o-','LineWidth',1.8); grid on;
+xlabel('State'); ylabel('Temperature [K]'); title('Temperature through the engine');
+nexttile; plot(State,Pstate/kPa,'o-','LineWidth',1.8); grid on;
+xlabel('State'); ylabel('Pressure [kPa]'); title('Compression and expansion');
+nexttile; plot(State,Vstate,'o-','LineWidth',1.8); grid on;
+xlabel('State'); ylabel('Velocity [m/s]'); title('Negligible internal KE approximation');
+nexttile; bar(categorical(string({SpS.Name})),Yprod); grid on;
+ylabel('Product mass fraction [-]'); title('Lean hydrogen combustion products');
+sgtitle('Group 10 - PROVISIONAL ideal baseline');
+exportgraphics(fig,fullfile(resultsDir,'cycle_overview.png'),'Resolution',160);
+close(fig);
