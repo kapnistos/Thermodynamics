@@ -725,7 +725,19 @@ mdot_prod = ndot_prod.*Mi;                  % [kg/s]  per species
 AF_st = (-nu(2)/Xair(2))*MAir/Mi(1);
 phi   = AF_st/AF;
 
-%% Product composition
+%% Initial mixture composition (air + fuel, before combustion)
+%
+% The unburned mixture entering the combustor: air and fuel mixed but not
+% yet reacted. Needed for Table 2 of the report ("Initial" column).
+
+Yreac = mdot_in/sum(mdot_in);           % Mass fractions
+Xreac = ndot_in/sum(ndot_in);           % Mole fractions
+
+% Mean molar mass (mole-weighted) and gas constant of the unburned mixture
+MReac = Xreac*Mi';                      % [kg/mol]
+Rreac = Runiv/MReac;                    % [J/(kg K)]
+
+%% Final mixture composition (products, after combustion)
 
 Yprod = mdot_prod/sum(mdot_prod);       % Mass fractions
 Xprod = ndot_prod/sum(ndot_prod);       % Mole fractions
@@ -910,10 +922,28 @@ fprintf('\nCombustion (H2 + 0.5 O2 -> H2O):\n');
 fprintf('mair  = %.4f kg/s\n',mair);
 fprintf('mfuel = %.4f kg/s\n',mfurate);
 fprintf('mprod = %.4f kg/s\n',mprod);
-fprintf('phi   = %.4f\n',phi);
-fprintf('Yprod [H2 O2 CO2 H2O N2] = [%.4f %.4f %.4f %.4f %.4f]\n',Yprod);
-fprintf('Xprod [H2 O2 CO2 H2O N2] = [%.4f %.4f %.4f %.4f %.4f]\n',Xprod);
-fprintf('Rprod = %.2f J/(kg K)\n',Rprod);
+
+%% Table 2 of the report: mixture before and after the combustor
+%
+% Initial = air + fuel entering the combustor, not yet reacted
+% Final   = combustion products leaving the combustor (state 4)
+%
+% Rows follow the report order Fuel, O2, N2, CO2, H2O, while the code
+% uses the species order [H2, O2, CO2, H2O, N2]; tableRows maps between them.
+
+tableRows  = [1 2 5 3 4];
+tableNames = {['Fuel (' cFuel ')'],'O2','N2','CO2','H2O'};
+
+fprintf('\nTABLE 2 - Mixture composition before and after the combustor\n');
+fprintf('AF = %.2f (equivalence ratio = %.4f)\n',AF,phi);
+fprintf('Stoichiometric AF = %.2f, phi = AF_st/AF\n',AF_st);
+fprintf('\n%-16s %10s %10s\n','Mass fractions','Initial','Final');
+for k = 1:numel(tableRows)
+    iRow = tableRows(k);
+    fprintf('%-16s %10.5f %10.5f\n',tableNames{k},Yreac(iRow),Yprod(iRow));
+end
+fprintf('%-16s %10.2f %10.2f\n','Rg [J/(kg K)]',Rreac,Rprod);
+fprintf('(Initial = air + fuel unburned, Final = products at state 4)\n');
 
 fprintf('\nCombustor outlet state 4:\n');
 fprintf('T4 = %.2f K\n',T4);
@@ -937,6 +967,7 @@ fprintf('============================================================\n');
 % mprod                       mass flow through turbine and nozzle
 % Yprod, Xprod                product composition (fixed from here on)
 % Rprod                       gas constant of the products
+% Yreac, Rreac, AF_st, phi    initial mixture and equivalence ratio (Table 2)
 % hprod_a, sprod_a            product property curves over TR
 % Wcomp, mair, h2, h3         compressor power the turbine must deliver
 %
