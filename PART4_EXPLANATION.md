@@ -4,22 +4,22 @@
 
 The original Parts 1-3 run in MATLAB and form a sound implementation of the ideal baseline. Part 4 adds independent validation, a complete state table, exported results, a figure, and a direct-root verification script. It preserves the original NASA functions and cycle calculations.
 
-**The defaults are provisional.** On 26 September 2026 the user authorized retaining the repository defaults, while marking them for later confirmation. This is not confirmation that they are the official course settings.
+**The model is the ideal cycle.** The lecturers confirmed that all component efficiencies are 1. The combustor is adiabatic and burns at constant pressure (P4 = P3).
 
-| Setting | Current default | Where to change it |
+| Setting | Value | Where it is set |
 |---|---:|---|
 | Compressor efficiency eta_c | 1.0 | Central settings in JetEngine_Group10.m |
 | Turbine efficiency eta_t | 1.0 | Central settings |
 | Nozzle enthalpy-drop efficiency eta_n | 1.0 | Central settings |
 | Hydrogen inlet temperature | 298.15 K | Tfuel |
-| Combustor outlet/inlet pressure | 1.0 | P4overP3 |
-| Combustor heat loss | 0 W | Qloss |
+| Combustor pressure | P4 = P3 | Constant-pressure combustion in Part 2 |
+| Combustor heat loss | None | Adiabatic combustor in Part 2 |
 | Shaft transmission | Lossless | Turbine shaft balance; changing this requires updating validation too |
 | Internal velocities, states 2-5 | Negligible, represented by zero | Component assumptions |
 | Chemistry | Complete H2 combustion; frozen products, no dissociation | Part 2 |
 | Nozzle exit pressure | Ambient | Lecture 2 requirement |
 
-The main script and results/provisional_assumptions.csv retain this reminder. Confirm the group-settings source, the official efficiency definitions, any turbine-temperature limit, and the current Canvas report template before final submission. The supplied rubric is an assessment grid, not the missing report template. No unsupported blade-temperature limit or fuel pressure has been invented. A combustor entropy-generation calculation would additionally need the fuel inlet pressure and, for heat loss, a boundary temperature.
+The settings are exported to results/assumptions.csv. Use the current Canvas report template for the final submission. The supplied rubric is an assessment grid, not the missing report template. No unsupported blade-temperature limit or fuel pressure has been invented. A combustor entropy-generation calculation would additionally need the fuel inlet pressure.
 
 ## Assessment of Parts 1, 2 and 3
 
@@ -33,7 +33,7 @@ The original path to General depended on MATLAB's current folder. Part 4 anchors
 
 **Verdict: the core chemistry and energy accounting are correct.** The code burns H2 according to H2 + 0.5 O2 -> H2O, carries N2 through, leaves excess O2, and checks mass and elemental conservation. It changes both mixture properties and gas constant after combustion. It includes fuel mass in the outlet stream and includes formation enthalpy through HNasa, so it correctly avoids adding LHV to the energy balance.
 
-The product mass fractions are approximately [0, 0.193148, 0, 0.043503, 0.763348] in the order [H2, O2, CO2, H2O, N2]; use the exported CSV for full precision. The equivalence ratio is approximately 0.1667. Fuel temperature, heat loss and pressure loss remain marked assumptions. The original direct T4 enthalpy check was already a useful independent check; Part 4 extends that approach to the rest of the model.
+The product mass fractions are approximately [0, 0.193148, 0, 0.043503, 0.763348] in the order [H2, O2, CO2, H2O, N2]; use the exported CSV for full precision. The equivalence ratio is approximately 0.1667. The fuel inlet temperature (298.15 K) is a model assumption; the combustor is adiabatic and at constant pressure. The original direct T4 enthalpy check was already a useful independent check; Part 4 extends that approach to the rest of the model.
 
 ### Part 3: turbine and nozzle
 
@@ -47,7 +47,7 @@ The tiny untitled2.m file contains only scratch text and is not a working model.
 
 PART4_REPORT_SECTION.md is a shorter, report-ready version of this explanation. The component comparison lists ideal and actual temperatures, specified and independently reconstructed efficiencies, and direct entropy changes. Tiny negative entropy differences in the ideal baseline are interpolation residuals within the stated entropy tolerance, not a claim of physical entropy destruction.
 
-The validation CSV now includes abs(residual)/tolerance. Its largest baseline value is 0.082143, well below the pass limit of 1; this is not a relative physical error. Failed residuals are exported before the script stops, and the error identifies the failed checks. A regenerated results_summary.txt collects the main numbers and provisional assumptions.
+The validation CSV now includes abs(residual)/tolerance. Its largest baseline value is 0.082143, well below the pass limit of 1; this is not a relative physical error. Failed residuals are exported before the script stops, and the error identifies the failed checks. A regenerated results_summary.txt collects the main numbers and model settings.
 
 Each model run starts with an INCOMPLETE status and becomes PASS only after its exports finish. Out-of-grid property inversions stop with the component name. The PDF builder reads the current numerical results and accepts independent verification only when its run ID matches. The Markdown examples here describe the default baseline; `START_HERE.md` explains the components and a suggested study sequence.
 
@@ -55,7 +55,7 @@ Each model run starts with an INCOMPLETE status and becomes PASS only after its 
 
 ### 1. Connect the parts and make the run reproducible
 
-The calculation remains one sequential script: inlet -> diffuser -> compressor -> combustor -> turbine -> nozzle -> validation/results. Downstream sections use the variables produced upstream. The input values occur once, and the default efficiencies and loss settings now sit together near the top. General is located using fileparts(mfilename('fullpath')), so adding the project folder to MATLAB's path is enough to run it from another current folder.
+The calculation remains one sequential script: inlet -> diffuser -> compressor -> combustor -> turbine -> nozzle -> validation/results. Downstream sections use the variables produced upstream. The input values occur once, and the efficiencies and fuel temperature sit together near the top. General is located using fileparts(mfilename('fullpath')), so adding the project folder to MATLAB's path is enough to run it from another current folder.
 
 The given Group 10 data are H2, T1=300 K, P1=100000 Pa, v1=200 m/s, P3/P2=9, fuel flow 0.58 kg/s, and AF=204.42. Thus m_air=118.5636 kg/s and m_products=119.1436 kg/s.
 
@@ -82,7 +82,7 @@ Part 4 recalculates h_hat_j = sum(Y_i HNasa_i(T_j)) directly, bypassing the inte
 
     Diffuser:  r_d = h_hat_1 + v1^2/2 - h_hat_2 - v2^2/2
     Compressor: r_c = m_air(h_hat_3-h_hat_2) - Wcomp
-    Combustor: r_b = m_air h_hat_3 + m_f h_f - Qloss - m_prod h_hat_4
+    Combustor: r_b = m_air h_hat_3 + m_f h_f - m_prod h_hat_4
     Turbine: r_t = m_prod(h_hat_4-h_hat_5) - Wturb
     Shaft: r_s = m_prod(h_hat_4-h_hat_5) - m_air(h_hat_3-h_hat_2)
     Nozzle: r_n = h_hat_5 + v5^2/2 - h_hat_6 - v6^2/2
@@ -90,7 +90,7 @@ Part 4 recalculates h_hat_j = sum(Y_i HNasa_i(T_j)) directly, bypassing the inte
 The whole-engine check cancels the internal shaft work:
 
     r_engine = m_air(h_hat_1+v1^2/2) + m_f h_f
-               - m_prod(h_hat_6+v6^2/2) - Qloss.
+               - m_prod(h_hat_6+v6^2/2).
 
 This assumes no external shaft work or shaft loss and negligible fuel kinetic energy, consistently with the selected baseline. There is no extra LHV term. Formation enthalpy already accounts for the chemical energy.
 
@@ -116,7 +116,7 @@ The plots show temperature, pressure and velocity by station and product mass fr
 
 ### 7. Export and package
 
-Run JetEngine_Group10.m to generate results/state_table.csv, composition.csv, validation.csv, provisional_assumptions.csv, Group10_results.mat and cycle_overview.png. Run verify_group10.m for the independent direct-root comparison. General contains the unmodified supplied database and helper functions.
+Run JetEngine_Group10.m to generate results/state_table.csv, composition.csv, validation.csv, assumptions.csv, Group10_results.mat and cycle_overview.png. Run verify_group10.m for the independent direct-root comparison. General contains the unmodified supplied database and helper functions.
 
 The accompanying report provides compact technical content. The detailed explanation here supports understanding and presentation. The actual current Canvas Word template was not supplied; therefore the report is not certified as matching its layout. Transfer the content if the template requires a different structure, fill in student details there, and confirm current submission naming and team rules.
 
@@ -124,7 +124,7 @@ The accompanying report provides compact technical content. The detailed explana
 
 Repository reviewed: https://github.com/kapnistos/Thermodynamics at commit 8bfbf18a1d044f59f87f9d72e3682f26f9f8e72a, downloaded 26 September 2026. The downloaded working plan has the same extracted content as the user-provided working plan. Repository lectures are older than the supplied 2026 versions.
 
-- 4EB00 Special Topic Jet Engine Rubric.pdf, pp. 1-2: coding flexibility, NASA-based component methodology, correct composition, changed gas constant and turbine mass flow. No grade is claimed; confirmation of the official case is still needed.
+- 4EB00 Special Topic Jet Engine Rubric.pdf, pp. 1-2: coding flexibility, NASA-based component methodology, correct composition, changed gas constant and turbine mass flow. No grade is claimed.
 - 4EB00 Special Topic Jet Engine Info 2025.pdf, pp. 1-2: MATLAB/NASA requirement, conservation approach, compact report and packaging. Its 2025 dates are historical.
 - Lecture 2 Cycle analysis 2026.pdf, pp. 7-14: stations, control volumes, diffuser equations, calculated T4, ambient exit pressure and group-specific inputs. Its p. 15 states regular submission 9 October 2026 and late submission 16 October 2026, with late grade capped at 8. These are the supplied lecture dates, not a claim of checking Canvas live.
 - Lecture 1 Ideal Gas Mixtures 2026.pdf, pp. 9-10, 19-27, 29-34: mixture definitions, formation enthalpy, NASA functions and the distinction between closed-vessel internal-energy balance and flow enthalpy balance.

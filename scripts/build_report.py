@@ -47,21 +47,21 @@ def table(data,widths,fs=8.4):
 def page(title): story.append(PageBreak());p(title,'TitleCustom')
 def footer(c,doc):
     c.setFont('Helvetica',8);c.setFillColor(colors.HexColor('#5b6c77'))
-    c.drawString(42,27,f'4EB00 | Group 10 | Provisional settings | {run_date}')
+    c.drawString(42,27,f'4EB00 | Group 10 | Ideal cycle | {run_date}')
     c.drawRightString(A4[0]-42,27,str(doc.page))
 
 p('Jet engine cycle analysis','TitleCustom')
 p('Group 10 - integrated model and validation','HCustom')
 p(f"The NASA-property model predicts an exhaust speed of <b>{m['v6']:.2f} m/s</b>, a combustor outlet temperature of <b>{m['T4']:.2f} K</b>, and matched compressor/turbine power of <b>{m['Wcomp']/1e6:.3f} MW</b>. All {len(residuals)} independent numerical residual checks pass.")
-h('Inputs and provisional settings')
+h('Inputs and model settings')
 table([['Group input','Value','Model setting','Value'],
     ['Fuel','H2','eta_c / eta_t / eta_n',f"{m['eta_c']:g} / {m['eta_t']:g} / {m['eta_n']:g}"],
     ['Ambient T / P',f"{m['Tamb']:g} K / {m['Pamb']/1000:g} kPa",'Fuel temperature',f"{m['Tfuel']:g} K"],
-    ['Flight speed',f"{m['v1']:g} m/s",'P4 / P3',f"{m['P4overP3']:g}"],
-    ['Compressor ratio',f"{m['P3overP2']:g}",'Combustor heat loss',f"{m['Qloss']:g} W"],
+    ['Flight speed',f"{m['v1']:g} m/s",'Combustor pressure','Constant (P4 = P3)'],
+    ['Compressor ratio',f"{m['P3overP2']:g}",'Combustor heat loss','None (adiabatic)'],
     ['Fuel flow / AF',f"{m['mfuel']:g} kg/s / {m['AF']:g}",'Shaft','Lossless']], [110,140,150,111])
-p('<b>Settings reminder:</b> the efficiencies, fuel inlet temperature and loss assumptions are provisional model inputs, not confirmed against the current course settings. They are centralized in the code and exported in provisional_assumptions.csv.')
-p('The model is steady and adiabatic by default, with negligible potential-energy changes and negligible internal kinetic energy at states 2-5. Air is 21% O2 and 79% N2 by mole. Hydrogen burns completely; downstream composition is frozen. The nozzle exit pressure is prescribed as ambient.')
+p('<b>Model settings:</b> the cycle is ideal, as confirmed by the lecturers: all component efficiencies are 1, the combustor is adiabatic at constant pressure and the shaft is lossless. The settings are centralized in the code and exported in assumptions.csv.')
+p('The model is steady and adiabatic, with negligible potential-energy changes and negligible internal kinetic energy at states 2-5. Air is 21% O2 and 79% N2 by mole. Hydrogen burns completely; downstream composition is frozen. The nozzle exit pressure is prescribed as ambient.')
 h('Complete state results')
 data=[['State','T [K]','P [kPa]','v [m/s]','h [kJ/kg]','s_mix [kJ/kg K]']]
 for r in states:data.append([r['State']]+[f"{float(r[k]):.2f}" for k in ['T_K','P_kPa','v_m_s','h_kJ_kg']]+[f"{float(r['s_mix_kJ_kgK']):.5f}"])
@@ -75,7 +75,7 @@ h('Diffuser and compressor - Part 1')
 code('h2 = h1 + v1^2/2                     (v2 = 0)\nP2 = P1 exp[(s_T,2 - s_T,1)/R_air]\ns_T,3s = s_T,2 + R_air ln(P3/P2)\nh3 = h2 + (h3s - h2)/eta_c\nWcomp = m_air (h3 - h2)')
 p(f"The diffuser converts flight kinetic energy into enthalpy and satisfies s2=s1. Invert h_air(T2)=h2 to find T2. For the compressor, entropy gives T3s at the prescribed pressure ratio; efficiency gives actual h3, then inversion gives T3. Here T3={float(states[2]['T_K']):.2f} K and T3s={m['T3s']:.2f} K.")
 h('Combustion and combustor - Part 2')
-code('H2 + 0.5 O2 -> H2O\nn_products = n_in + [-1 -0.5 0 1 0] n_H2,in\nh4 = (m_air h3 + m_fuel h_fuel - Qloss)/m_products\nh_products(T4) = h4;              P4 = (P4/P3) P3')
+code('H2 + 0.5 O2 -> H2O\nn_products = n_in + [-1 -0.5 0 1 0] n_H2,in\nh4 = (m_air h3 + m_fuel h_fuel)/m_products\nh_products(T4) = h4;              P4 = P3')
 p(f"Species order is [H2, O2, CO2, H2O, N2]. Mass flows are converted to molar flows with database molecular masses; product mass and mole fractions follow from the reacted flows. The equivalence ratio is {m['phi']:.4f}, leaving excess oxygen. Adding an LHV term would double-count chemical energy. This is an open-flow enthalpy balance, unlike the closed-vessel internal-energy exercise in Lecture 1. [2,4]")
 h('Turbine and nozzle - Part 3')
 code('h5 = h4 - Wcomp/m_products\nh5s = h4 - (h4 - h5)/eta_t\nP5 = P4 exp[(s_T,5s - s_T,4)/R_products]\ns_T,6s = s_T,5 + R_products ln(Pamb/P5)\nh6 = h5 - eta_n (h5 - h6s)\nv6 = sqrt[2(h5 - h6)]                (v5 = 0)')
@@ -87,7 +87,7 @@ data=[['Check','Residual','Tolerance','Unit']]
 for r in residuals: data.append([r['Check'],f"{float(r['Residual']):.4g}",f"{float(r['Tolerance']):.4g}",r['Unit']])
 table(data,[230,88,88,105],7.8)
 p(f"A 1 J/kg single-state enthalpy allowance and 0.01 J/(kg K) entropy allowance account for interpolation. Flow-energy tolerances sum allowed state errors multiplied by mass flow. The largest enthalpy inversion error is only <b>{abs(float(checks['Max h inversion']['Residual'])):.5f} J/kg</b>. The largest tolerance fraction is {max(float(r['ToleranceFraction']) for r in residuals):.5f} (limit 1). Reconstructed component efficiencies also pass. These checks assess numerical consistency, not physical model accuracy.",'SmallCustom')
-p(f"The whole-engine balance is m_air(h1+v1^2/2)+m_fuel h_fuel - m_products(h6+v6^2/2)-Qloss=0. Its <b>{abs(float(checks['Whole engine energy']['Residual'])):.3f} W</b> residual is tiny compared with the energy flows. Internal compressor/turbine work cancels for the lossless shaft.",'SmallCustom')
+p(f"The whole-engine balance is m_air(h1+v1^2/2)+m_fuel h_fuel - m_products(h6+v6^2/2)=0. Its <b>{abs(float(checks['Whole engine energy']['Residual'])):.3f} W</b> residual is tiny compared with the energy flows. Internal compressor/turbine work cancels for the lossless shaft.",'SmallCustom')
 if verification:
     p(f"<b>Separate solver:</b> verify_group10.m solves the same run using direct NASA functions and fzero. Maximum temperature disagreement is <b>{verification['max_temperature_error_K']:.6f} K</b>; exhaust-speed disagreement is <b>{verification['velocity_error_m_s']:.6f} m/s</b>. The check uses different numerical inversion; it shares the same physical assumptions and database.",'SmallCustom')
 else:
@@ -107,13 +107,13 @@ p('Product mass fractions [H2, O2, CO2, H2O, N2]: ['+', '.join(f"{float(r['Yprod
 
 page('Integration, review and source record')
 h('Assessment of the existing work')
-p('<b>Part 1:</b> correct NASA-based diffuser/compressor method for the chosen baseline. The original current-folder dependency is fixed; direct property checks strengthen its validation. <b>Part 2:</b> correct hydrogen stoichiometry, mass/element accounting and formation-enthalpy energy balance. <b>Part 3:</b> correct turbine mass-flow factor, efficiency equations and nozzle energy conversion. Default efficiencies and losses remain provisional. No grade is inferred from the rubric.')
+p('<b>Part 1:</b> correct NASA-based diffuser/compressor method for the chosen baseline. The original current-folder dependency is fixed; direct property checks strengthen its validation. <b>Part 2:</b> correct hydrogen stoichiometry, mass/element accounting and formation-enthalpy energy balance. <b>Part 3:</b> correct turbine mass-flow factor, efficiency equations and nozzle energy conversion. No grade is inferred from the rubric.')
 h('Part 4 implementation and reproducibility')
 p('The model remains a single sequential script, with one input/settings block and script-relative database access. It collects all six stations, evaluates 21 residual checks, enforces physical trends and valid efficiencies, and exports the state, composition, validation and assumptions tables, a MAT result file and the figure. The component comparison and a plain-text results summary are also exported. Failed residual checks are saved with their names for diagnosis. The supplied NASA base functions and database remain unchanged.')
 code('JetEngine_Group10       % solve, validate and export results\nverify_group10          % compare against direct NASA roots')
 p('Extract the scripts package and use that folder as MATLAB Current Folder, or add it to the MATLAB path. Outputs are regenerated under results/. MATLAB R2026a was used for validation. PART4_EXPLANATION.md gives the detailed integration and checking rationale.')
-h('Items to confirm before submission')
-p('Confirm the default efficiencies, fuel inlet state, combustor losses, shaft model and any turbine-temperature limit against the current course files. Use the actual Canvas Word template, fill in student details and verify packaging/team requirements there. This report supplies technical content; its structure has not been checked against the unavailable template. The 2026 Lecture 2, p. 15, gives 9 October regular and 16 October late submission, with the late grade capped at 8. The 2025 handout dates are superseded by that supplied lecture.')
+h('Before submission')
+p('Use the actual Canvas Word template, fill in student details and verify packaging/team requirements there. This report supplies technical content; its structure has not been checked against the unavailable template. The 2026 Lecture 2, p. 15, gives 9 October regular and 16 October late submission, with the late grade capped at 8. The 2025 handout dates are superseded by that supplied lecture.')
 h('Sources inspected')
 for t in [
 '[1] 4EB00 Special Topic Jet Engine Info 2025.pdf, pp. 1-2: NASA/MATLAB method and deliverables; 4EB00 Special Topic Jet Engine Rubric.pdf, pp. 1-2: methodology, composition and result criteria.',
@@ -125,6 +125,6 @@ for t in [
 '[8] github.com/kapnistos/Thermodynamics, commit 8bfbf18a1d044f59f87f9d72e3682f26f9f8e72a, downloaded 26 September 2026: main script, README, starter, scratch file, all General functions/database, older lectures and working plan.'
 ]: p(t,'SmallCustom')
 
-doc=SimpleDocTemplate(str(out/'Group10_report_provisional.pdf'),pagesize=A4,rightMargin=42,leftMargin=42,topMargin=40,bottomMargin=45,title='Group 10 Jet Engine - Provisional Settings',author='Group 10')
+doc=SimpleDocTemplate(str(out/'Group10_report.pdf'),pagesize=A4,rightMargin=42,leftMargin=42,topMargin=40,bottomMargin=45,title='Group 10 Jet Engine - Ideal Cycle',author='Group 10')
 doc.build(story,onFirstPage=footer,onLaterPages=footer)
-print(out/'Group10_report_provisional.pdf')
+print(out/'Group10_report.pdf')

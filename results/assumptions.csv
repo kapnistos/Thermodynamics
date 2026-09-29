@@ -1,0 +1,7 @@
+Setting,Value,Note
+eta_c,1,Ideal compressor
+eta_t,1,Ideal turbine
+eta_n,1,Ideal nozzle
+Tfuel_K,298.15,H2 gas at the reference temperature
+shaft_efficiency,1,Lossless shaft
+v2_v3_v4_v5_m_s,0,Kinetic energy inside the engine neglected

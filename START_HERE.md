@@ -24,7 +24,7 @@ The numbers are measuring stations, not six separate machines. For example, stat
 
 Accelerating gas backwards produces forward thrust through the momentum balance. The turbine's role here is to power the compressor. Equal turbine and compressor powers do not mean the engine does nothing: the nozzle still accelerates the gas.
 
-The numbers in this guide describe the provisional default baseline. After changing settings, use the newly generated tables and PDF.
+The numbers in this guide describe the ideal cycle (all component efficiencies 1). After changing any input, use the newly generated tables and PDF.
 
 ## 2. Learn these symbols first
 
@@ -102,7 +102,7 @@ Parts 1-3 calculate the component states. Part 4 connects, checks and explains t
 
 A **residual** is the amount by which a balance fails to close. If energy in should equal energy out, the residual is energy in minus energy out. Small numerical errors are allowed by an explicit tolerance. `ToleranceFraction = abs(residual)/tolerance`; below 1 passes. It is not the physical percentage error of the engine prediction.
 
-The baseline has 21 passing residual checks. The full-engine energy mismatch is only **3.29 W**, and the largest tolerance fraction is **0.08214**. This establishes numerical consistency; provisional assumptions still need course confirmation.
+The baseline has 21 passing residual checks. The full-engine energy mismatch is only **3.29 W**, and the largest tolerance fraction is **0.08214**. This establishes the numerical consistency of the ideal-cycle model.
 
 ## 7. Get on track in one study session
 
@@ -120,7 +120,7 @@ This runs the model and the independent comparison. Look for `Independent numeri
 
 **Next 15 minutes:** read `PART4_REPORT_SECTION.md`. Then find `PART 4` in `JetEngine_Group10.m`. Its blocks collect states, evaluate properties directly, calculate residuals, compare components and export results. You do not need to memorize the entire script.
 
-**Before submission:** use `PART4_HANDOFF.md`. Confirm official settings, use the Canvas report template, add student details, regenerate results after any input changes, and submit the required PDF/scripts package. Keep the provisional label until the settings are confirmed.
+**Before submission:** use `PART4_HANDOFF.md`. Use the Canvas report template, add student details, regenerate results after any input changes, and submit the required PDF/scripts package.
 
 ## 8. Check whether you can explain it
 

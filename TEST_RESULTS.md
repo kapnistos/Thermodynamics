@@ -3,6 +3,10 @@
 Runtime: MATLAB R2026a on Windows. Source baseline: GitHub commit
 8bfbf18a1d044f59f87f9d72e3682f26f9f8e72a.
 
+Update 29 September 2026: the lecturers confirmed the ideal cycle. P4overP3 and
+Qloss were then removed from the model (P4 = P3, adiabatic combustor), so the
+P4/P3 input used in the nonideal test below no longer exists.
+
 | Verification | Result |
 |---|---|
 | Original main script, Parts 1-3 | Runs successfully |
@@ -17,8 +21,8 @@ Runtime: MATLAB R2026a on Windows. Source baseline: GitHub commit
 | PDF | Five pages rendered and visually inspected |
 
 The nonideal inputs are software verification cases only. The delivered code
-retains all user-authorized repository defaults. Numerical verification does
-not confirm those defaults against Canvas or validate a specific nozzle geometry.
+uses the ideal-cycle settings confirmed by the lecturers. Numerical verification
+does not validate a specific nozzle geometry.
 
 Reproduce the numerical checks by running `verify_group10` from the extracted
 package. The main model writes `results/validation.csv`; the verification script

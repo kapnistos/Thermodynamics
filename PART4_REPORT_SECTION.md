@@ -2,7 +2,7 @@
 
 ## Integration of the model
 
-The diffuser, compressor, combustor, turbine and nozzle calculations were integrated into one sequential MATLAB script. Each component receives the state calculated by the preceding component, so changing an input automatically updates the complete cycle. The Group 10 inputs and provisional efficiency settings are defined once. The NASA database is located relative to the script, allowing the package to run without a user-specific folder path.
+The diffuser, compressor, combustor, turbine and nozzle calculations were integrated into one sequential MATLAB script. Each component receives the state calculated by the preceding component, so changing an input automatically updates the complete cycle. The Group 10 inputs and the efficiency settings are defined once. The NASA database is located relative to the script, allowing the package to run without a user-specific folder path.
 
 All calculations use SI units. Pressure and enthalpy are converted to kPa and kJ/kg only when presenting results. Air properties are used at states 1-3, while combustion-product properties are used at states 4-6. The change in mass flow is retained: the compressor processes 118.5636 kg/s of air, whereas the turbine and nozzle process 119.1436 kg/s after adding 0.5800 kg/s of hydrogen.
 
@@ -21,7 +21,7 @@ where the hat denotes a direct NASA evaluation at the calculated temperature. Th
 
 \[
 r_{engine}=\dot m_a(\hat h_1+v_1^2/2)+\dot m_fh_f
- -\dot m_p(\hat h_6+v_6^2/2)-\dot Q_{loss}.
+ -\dot m_p(\hat h_6+v_6^2/2).
 \]
 
 These expressions assume the selected lossless shaft and negligible fuel kinetic energy. A separate heating-value term is unnecessary because the NASA enthalpies already include formation enthalpy.
@@ -49,6 +49,6 @@ The negative exhaust enthalpy, approximately -281.49 kJ/kg, is consistent with t
 
 ## Assumptions and conclusion
 
-The calculation retains eta_c=eta_t=eta_n=1, hydrogen inlet temperature 298.15 K, zero combustor heat and pressure loss, and a lossless shaft. These values are provisional and recorded in the code and results for later confirmation. The exit Mach number is approximately 1.60, so the prescribed expansion to ambient pressure assumes suitable nozzle geometry. Numerical validation establishes consistency of this model; it does not establish the accuracy of its ideal assumptions for a real engine.
+The calculation models the ideal cycle, as confirmed by the lecturers: eta_c=eta_t=eta_n=1, an adiabatic constant-pressure combustor and a lossless shaft. Hydrogen enters at 298.15 K. These settings are recorded in the code and results. The exit Mach number is approximately 1.60, so the prescribed expansion to ambient pressure assumes suitable nozzle geometry. Numerical validation establishes consistency of this model; it does not establish the accuracy of its ideal assumptions for a real engine.
 
-The integrated model is therefore numerically consistent for the selected baseline. Its results can be reproduced by running the supplied MATLAB script, and the exported checks provide a clear basis for reassessing the cycle when the official settings are confirmed.
+The integrated model is therefore numerically consistent for the selected baseline. Its results can be reproduced by running the supplied MATLAB script, and the exported checks provide a clear basis for reassessing the cycle if an input changes.

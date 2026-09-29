@@ -3,7 +3,7 @@
 
 Run `JetEngine_Group10` for the complete cycle; run `verify_group10` to check it.
 Start with `START_HERE.md`; results and the report are in `results/` and `reports/`.
-The current efficiency and loss settings are provisional; see `PART4_HANDOFF.md` before submission.
+The model is the ideal cycle: all component efficiencies are 1, as confirmed by the lecturers. See `PART4_HANDOFF.md` before submission.
 
 This repository contains the MATLAB model for the 4EB00 Thermodynamics Jet Engine assignment.
 
@@ -71,16 +71,16 @@ Jet engine/
 
 # Model Assumptions
 
-Current modelling choices. Each one is a single variable in `JetEngine_Group10.m`, so it can be changed in one place if the official model (Turns / Canvas template) says otherwise.
+Modelling choices of the ideal cycle, confirmed by the lecturers. The efficiencies and the fuel temperature are single variables at the top of `JetEngine_Group10.m`.
 
 | Assumption | Value in code | Part | Reason |
 |---|---|---|---|
-| Compressor isentropic efficiency | `eta_c = 1.0` (provisional) | 1 | Ideal turbojet (Turns Fig. 8.19); still to be confirmed |
+| Component isentropic efficiencies | `eta_c = eta_t = eta_n = 1.0` | 1, 3 | Ideal cycle, confirmed by the lecturers |
 | Fuel inlet state | `Tfuel = Tref` (H2 gas, 298.15 K) | 2 | Reference state; using 300 K instead changes T4 by only ~0.1 K |
-| Combustor pressure | `P4overP3 = 1` (P4 = P3) | 2 | Constant-pressure combustor of the ideal turbojet |
-| Combustor heat loss | `Qloss = 0` | 2 | Adiabatic combustor: no heat crosses its walls |
+| Combustor pressure | `P4 = P3` | 2 | Constant-pressure combustion of the ideal cycle |
+| Combustor heat loss | none | 2 | Adiabatic combustor: no heat crosses its walls |
 | Combustion | complete: H2 + 0.5 O2 -> H2O | 2 | Very lean mixture (phi ~ 0.17): excess O2, no dissociation |
 
 Species order everywhere: `[H2, O2, CO2, H2O, N2]`. From state 4 on, use the product properties (`hprod_a`, `sprod_a`, `Rprod`), not the air ones.
 
-<!-- Git push test: 2026-09-26 -->
+

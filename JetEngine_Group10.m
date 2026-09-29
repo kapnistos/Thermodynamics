@@ -38,18 +38,16 @@ AF=204.42;            % Air-fuel ratio [-]
 cFuel='H2';           % Fuel
 
 %% Model assumptions
-% Efficiencies are provisional and must be checked before submission.
+% Ideal cycle: all component efficiencies are 1 (confirmed by the lecturers).
+% The combustor is adiabatic and burns at constant pressure (P4=P3).
 eta_c=1.0;            % Compressor isentropic efficiency [-]
 eta_t=1.0;            % Turbine isentropic efficiency [-]
 eta_n=1.0;            % Nozzle efficiency [-]
 Tfuel=Tref;           % Fuel inlet temperature [K]
-P4overP3=1;           % Combustor pressure ratio [-]
-Qloss=0;              % Combustor heat loss [W]
 
 assert(all([eta_c eta_t eta_n]>0 & [eta_c eta_t eta_n]<=1),...
     'Component efficiencies must lie in (0,1].');
-assert(Tfuel>=200 && Tfuel<=3000 && P4overP3>0 && P4overP3<=1 && Qloss>=0,...
-    'Invalid model settings.');
+assert(Tfuel>=200 && Tfuel<=3000,'Fuel inlet temperature outside the NASA range.');
 assert(v1>0 && Tamb>=200 && Tamb<=3000 && P3overP2>1 && Pamb>0 && mfurate>0 && AF>0,...
     'Invalid Group 10 input data.');
 assert(strcmp(cFuel,'H2'),'This reaction model is written for H2.');
@@ -254,14 +252,16 @@ sprod_a=Yprod*sia';
 
 %% Combustor 3 -> 4
 % Steady, adiabatic, no shaft work and negligible kinetic/potential energy.
+% mair*h3+mfurate*hfuel=mprod*h4
 % NASA enthalpies include formation enthalpy, so LHV is not added here.
 hfuel=HNasa(Tfuel,SpS(1));
 Hdot_in=mair*h3+mfurate*hfuel;
-h4=(Hdot_in-Qloss)/mprod;
+h4=Hdot_in/mprod;
 
 T4=invertProperty(hprod_a,TR,h4,'Combustor T4');
 
-P4=P4overP3*P3;
+% Combustion at constant pressure.
+P4=P3;
 s4thermal=interp1(TR,sprod_a,T4);
 S4=s4thermal-Rprod*log(P4/Pref);
 
@@ -273,7 +273,7 @@ for i=1:NSp
 end
 
 h4check=Yprod*hi4';
-combustorEnergyResidual=Hdot_in-Qloss-mprod*h4check;
+combustorEnergyResidual=Hdot_in-mprod*h4check;
 
 assert(T4>T3,'Combustor: T4 should be greater than T3.');
 assert(abs(combustorEnergyResidual)/mprod<1,...
@@ -505,11 +505,11 @@ Check=["Diffuser energy";"Compressor power";"Combustor energy";...
 Residual=zeros(21,1);
 Residual(1)=Hdirect(1)+v1^2/2-Hdirect(2)-v2^2/2;
 Residual(2)=mair*(Hdirect(3)-Hdirect(2))-Wcomp;
-Residual(3)=mair*Hdirect(3)+mfurate*hfuel-Qloss-mprod*Hdirect(4);
+Residual(3)=mair*Hdirect(3)+mfurate*hfuel-mprod*Hdirect(4);
 Residual(4)=mprod*(Hdirect(4)-Hdirect(5))-Wturb;
 Residual(5)=mprod*(Hdirect(4)-Hdirect(5))-mair*(Hdirect(3)-Hdirect(2));
 Residual(6)=Hdirect(5)+v5^2/2-Hdirect(6)-v6^2/2;
-Residual(7)=mair*(Hdirect(1)+v1^2/2)+mfurate*hfuel-mprod*(Hdirect(6)+v6^2/2)-Qloss;
+Residual(7)=mair*(Hdirect(1)+v1^2/2)+mfurate*hfuel-mprod*(Hdirect(6)+v6^2/2);
 Residual(8)=sum(mdot_prod)-mair-mfurate;
 Residual(9:12)=elementsOut(:)-elementsIn(:);
 Residual(13)=sum(Xair)-1;
@@ -584,7 +584,7 @@ assert(all(abs(EtaReconstructed-EtaSpecified)<1e-4),...
 assert(all(Yprod>=0) && all(Xprod>=0),'Negative product fraction.');
 assert(T2>T1 && T3>T2 && T4>T3 && T5<T4 && T6<T5,...
     'Unexpected temperature trend.');
-assert(P2>P1 && P3>P2 && P4<=P3 && P5<P4 && P5>P6 && P6==Pamb,...
+assert(P2>P1 && P3>P2 && P4==P3 && P5<P4 && P5>P6 && P6==Pamb,...
     'Unexpected pressure trend.');
 assert(T3>=T3s-1e-6 && T5>=T5s-1e-6 && T6>=T6s-1e-6 && v6<=v6s+1e-6,...
     'Inconsistent efficiency trend.');
@@ -615,14 +615,15 @@ gamma6=Cpdirect(6)/(Cpdirect(6)-Rprod);
 Mach6=v6/sqrt(gamma6*Rprod*T6);
 
 %% Assumptions table
-Setting=["eta_c";"eta_t";"eta_n";"Tfuel_K";"P4overP3";...
-         "Qloss_W";"shaft_efficiency";"v2_v3_v4_v5_m_s"];
+Setting=["eta_c";"eta_t";"eta_n";"Tfuel_K";"shaft_efficiency";"v2_v3_v4_v5_m_s"];
 
-Value=[eta_c;eta_t;eta_n;Tfuel;P4overP3;Qloss;1;0];
+Value=[eta_c;eta_t;eta_n;Tfuel;1;0];
 
-Status=repmat("PROVISIONAL default - confirm against Canvas/Turns",8,1);
+Note=["Ideal compressor";"Ideal turbine";"Ideal nozzle";...
+      "H2 gas at the reference temperature";"Lossless shaft";...
+      "Kinetic energy inside the engine neglected"];
 
-assumptionsTable=table(Setting,Value,Status);
+assumptionsTable=table(Setting,Value,Note);
 
 %% Final results
 fprintf('\n================ PART 4: CHECKED FINAL RESULTS ================\n');
@@ -654,7 +655,7 @@ disp(assumptionsTable);
 writetable(stateTable,fullfile(resultsDir,'state_table.csv'));
 writetable(compositionTable,fullfile(resultsDir,'composition.csv'));
 writetable(componentTable,fullfile(resultsDir,'component_comparison.csv'));
-writetable(assumptionsTable,fullfile(resultsDir,'provisional_assumptions.csv'));
+writetable(assumptionsTable,fullfile(resultsDir,'assumptions.csv'));
 
 save(fullfile(resultsDir,'Group10_results.mat'),...
     'stateTable','compositionTable','validationTable','componentTable',...
@@ -668,7 +669,7 @@ fid=fopen(summaryPath,'w');
 assert(fid>=0,'Could not open results summary.');
 
 fprintf(fid,'GROUP 10 - VALIDATED RESULTS\n');
-fprintf(fid,'Model status: provisional assumptions\n\n');
+fprintf(fid,'Model: ideal cycle (all component efficiencies 1)\n\n');
 fprintf(fid,'Exhaust velocity: %.6f m/s\n',v6);
 fprintf(fid,'Exit Mach: %.6f\n',Mach6);
 fprintf(fid,'Combustor outlet: %.6f K\n',T4);
@@ -701,7 +702,7 @@ nexttile;
 bar(categorical(string({SpS.Name})),Yprod);grid on;
 ylabel('Product mass fraction [-]');title('Combustion products');
 
-sgtitle('Group 10 - provisional settings');
+sgtitle('Group 10 - ideal cycle');
 
 exportgraphics(fig,fullfile(resultsDir,'cycle_overview.png'),'Resolution',160);
 close(fig);
@@ -709,7 +710,7 @@ close(fig);
 %% Machine-readable model summary
 modelSummary=struct('run_id',runId,'status','PASS',...
     'eta_c',eta_c,'eta_t',eta_t,'eta_n',eta_n,...
-    'Tfuel',Tfuel,'P4overP3',P4overP3,'Qloss',Qloss,...
+    'Tfuel',Tfuel,...
     'Tamb',Tamb,'Pamb',Pamb,'P3overP2',P3overP2,...
     'AF',AF,'AF_st',AF_st,'phi',phi,...
     'mair',mair,'mfuel',mfurate,'mprod',mprod,...
