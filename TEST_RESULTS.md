@@ -56,3 +56,7 @@ the error names the check and the failed row is saved in validation.csv.
 Run IDs connect the model and independent verification summaries. They prevent
 accidental reuse of earlier verification; they are not a file-integrity or
 tamper-detection mechanism.
+
+## Final Chapter 4 review — 30 September 2026
+
+Fresh MATLAB R2026a run of verify_group10: all 21 residuals and all direct-root comparisons pass. Component equations and General files unchanged. See FINAL_CHECK.md for scope and remaining full-report assembly requirements.
